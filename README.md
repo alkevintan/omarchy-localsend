@@ -2,7 +2,7 @@
 
 A native Omarchy Shell integration for [LocalSend](https://localsend.org/) that runs entirely in the background. Discover devices, choose files or clipboard text, review incoming requests, and track transfers without opening the LocalSend GUI.
 
-![LocalSend panel showing a nearby device](docs/panel.webp)
+![LocalSend panel showing a nearby device](preview.png)
 
 ## Features
 
@@ -28,11 +28,29 @@ omarchy plugin add https://github.com/cryptobredda/omarchy-localsend --enable --
 
 The plugin appears in the right side of the bar by default. It includes a prebuilt x86-64 Linux controller, so Rust is not required for installation.
 
+Runtime requirements:
+
+- Omarchy 4.0 or newer, which provides the shell, file picker, and notification helpers
+- x86-64 Linux with glibc 2.39 or newer
+- `util-linux` for `setpriv`
+- `wl-clipboard` for `wl-copy` and `wl-paste`
+- Local network access to TCP and UDP port `53317`
+
+The LocalSend application is not required. This plugin does not modify user configuration.
+
 To update later:
 
 ```bash
 omarchy plugin update bredda.localsend --yes
 ```
+
+## Remove
+
+```bash
+omarchy plugin remove bredda.localsend --yes
+```
+
+Removal stops the receiver and removes the plugin code. The persistent identity is intentionally retained so reinstalling does not change the device fingerprint. To reset that identity too, remove `$XDG_STATE_HOME/omarchy/localsend-controller`, or `~/.local/state/omarchy/localsend-controller` when `XDG_STATE_HOME` is unset.
 
 ## Use
 

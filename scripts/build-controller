@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+target_dir="${CARGO_TARGET_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/omarchy-localsend/target}"
+
+CARGO_TARGET_DIR="$target_dir" cargo build \
+  --locked \
+  --release \
+  --manifest-path "$repo_root/controller/Cargo.toml"
+
+install -m 0755 \
+  "$target_dir/release/localsend-controller" \
+  "$repo_root/bin/localsend-controller"
+
+printf 'Installed %s\n' "$repo_root/bin/localsend-controller"

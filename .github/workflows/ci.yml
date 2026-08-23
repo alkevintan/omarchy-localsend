@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  controller:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: controller
+      - name: Format
+        run: cargo fmt --manifest-path controller/Cargo.toml -- --check
+      - name: Lint
+        run: cargo clippy --manifest-path controller/Cargo.toml --all-targets --locked -- -D warnings
+      - name: Test
+        run: cargo test --manifest-path controller/Cargo.toml --locked
+      - name: Build
+        run: cargo build --manifest-path controller/Cargo.toml --locked --release
+      - name: Check packaged controller
+        run: ./bin/localsend-controller --version

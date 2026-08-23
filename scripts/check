@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+target_dir="${CARGO_TARGET_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/omarchy-localsend/target}"
+manifest="$repo_root/controller/Cargo.toml"
+
+cargo fmt --manifest-path "$manifest" -- --check
+CARGO_TARGET_DIR="$target_dir" cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
+CARGO_TARGET_DIR="$target_dir" cargo test --manifest-path "$manifest" --locked
+CARGO_TARGET_DIR="$target_dir" cargo build --manifest-path "$manifest" --locked --release
+
+if command -v qmllint >/dev/null 2>&1; then
+  qmllint \
+    "$repo_root/service/Receiver.qml" \
+    "$repo_root/widget/LocalSendIcon.qml" \
+    "$repo_root/widget/LocalSendBar.qml"
+fi
+
+if command -v omarchy >/dev/null 2>&1; then
+  omarchy plugin validate "$repo_root"
+fi

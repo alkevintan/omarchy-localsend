@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "bredda.localsend",
+  "name": "LocalSend",
+  "version": "2.0.0",
+  "author": "bredda",
+  "license": "MIT",
+  "description": "Run LocalSend headlessly and manage nearby devices, sharing, and incoming transfers from the Omarchy bar.",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "service/Receiver.qml",
+    "barWidget": "widget/LocalSendBar.qml"
+  },
+  "barWidget": {
+    "displayName": "LocalSend",
+    "description": "Headless LocalSend receiver with device selection, sharing, incoming decisions, and transfer progress.",
+    "category": "Files",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

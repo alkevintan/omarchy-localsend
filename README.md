@@ -33,7 +33,7 @@ Runtime requirements:
 - Omarchy 4.0 or newer, which provides the shell, file picker, and notification helpers
 - x86-64 Linux with glibc 2.39 or newer
 - `curl` for the initial HTTPS artifact download
-- `coreutils` for `sha256sum` verification
+- `coreutils` for the bounded download and size/SHA-256 verification
 - `util-linux` for `setpriv`
 - `wl-clipboard` for `wl-copy` and `wl-paste`
 - Local network access to TCP and UDP port `53317`
@@ -105,7 +105,7 @@ Cargo output is kept under `$XDG_CACHE_HOME/omarchy-localsend/target` by default
 
 ## Release Verification
 
-No compiled executable is committed to this repository. `bin/localsend-controller` is a readable Bash launcher, and `controller-release.env` pins one release tag, asset name, source commit, and SHA-256 digest. The launcher verifies the digest before every execution and rejects modified or unexpected artifacts.
+No compiled executable is committed to this repository. `bin/localsend-controller` is a readable Bash launcher, and `controller-release.env` pins one release tag, asset name, expected byte size, source commit, and SHA-256 digest. The launcher applies that byte ceiling while downloading, then verifies the exact size and digest before every execution and rejects modified or unexpected artifacts.
 
 `.github/workflows/release-controller.yml` builds releases from tagged source using Rust 1.97.1 and actions pinned by full commit SHA. It publishes the checksum and a GitHub artifact provenance attestation. The regular CI workflow independently downloads that exact release, verifies its checksum and attestation against the expected workflow, tag, and source commit, and only then executes it.
 

@@ -17,12 +17,16 @@ source "$metadata"
 
 [[ "${LOCALSEND_CONTROLLER_TAG:-}" =~ ^controller-v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "invalid release tag"
 [[ "${LOCALSEND_CONTROLLER_ASSET:-}" == "localsend-controller-x86_64-unknown-linux-gnu" ]] || fail "invalid release asset"
+[[ "${LOCALSEND_CONTROLLER_SIZE:-}" =~ ^[1-9][0-9]{0,8}$ ]] || fail "invalid release size"
+((LOCALSEND_CONTROLLER_SIZE <= 33554432)) || fail "release size exceeds the launcher limit"
 [[ "${LOCALSEND_CONTROLLER_SHA256:-}" =~ ^[0-9a-f]{64}$ ]] || fail "invalid release checksum"
 [[ "${LOCALSEND_CONTROLLER_SOURCE_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || fail "invalid release source commit"
 [[ "$(uname -m)" == "x86_64" ]] || fail "the published controller supports x86-64 Linux only"
 
 command -v curl >/dev/null 2>&1 || fail "curl is required to install the controller"
+command -v head >/dev/null 2>&1 || fail "head is required to bound the controller download"
 command -v sha256sum >/dev/null 2>&1 || fail "sha256sum is required to verify the controller"
+command -v stat >/dev/null 2>&1 || fail "stat is required to verify the controller size"
 
 cache_home="${XDG_CACHE_HOME:-${HOME:?HOME is required}/.cache}"
 cache_dir="${LOCALSEND_CONTROLLER_CACHE_DIR:-$cache_home/omarchy-localsend/controllers/$LOCALSEND_CONTROLLER_TAG}"
@@ -32,8 +36,11 @@ url="https://github.com/cryptobredda/omarchy-localsend/releases/download/$LOCALS
 verify_controller() {
   local candidate="$1"
   local digest
+  local size
 
   [[ -f "$candidate" && ! -L "$candidate" ]] || return 1
+  size="$(stat --format='%s' -- "$candidate")" || return 1
+  [[ "$size" == "$LOCALSEND_CONTROLLER_SIZE" ]] || return 1
   digest="$(sha256sum -- "$candidate")" || return 1
   [[ "${digest%% *}" == "$LOCALSEND_CONTROLLER_SHA256" ]]
 }
@@ -44,9 +51,11 @@ if ! verify_controller "$controller"; then
   temporary="$(mktemp "$cache_dir/.controller.XXXXXX")"
   trap 'rm -f -- "${temporary:-}"' EXIT
 
-  curl \
+  if ! curl \
+    --disable \
     --fail \
     --location \
+    --max-filesize "$LOCALSEND_CONTROLLER_SIZE" \
     --proto '=https' \
     --tlsv1.2 \
     --retry 3 \
@@ -54,10 +63,12 @@ if ! verify_controller "$controller"; then
     --max-time 300 \
     --silent \
     --show-error \
-    --output "$temporary" \
-    "$url"
+    "$url" |
+    head -c "$LOCALSEND_CONTROLLER_SIZE" > "$temporary"; then
+    fail "controller download failed or exceeded the reviewed size"
+  fi
 
-  verify_controller "$temporary" || fail "downloaded controller checksum does not match the reviewed release"
+  verify_controller "$temporary" || fail "downloaded controller size or checksum does not match the reviewed release"
   chmod 0700 -- "$temporary"
   mv -fT -- "$temporary" "$controller"
   trap - EXIT

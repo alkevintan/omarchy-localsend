@@ -6,6 +6,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 target_dir="${CARGO_TARGET_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/omarchy-localsend/target}"
 manifest="$repo_root/controller/Cargo.toml"
 
+"$repo_root/scripts/test-launcher"
 cargo fmt --manifest-path "$manifest" -- --check
 CARGO_TARGET_DIR="$target_dir" cargo clippy --manifest-path "$manifest" --all-targets --locked -- -D warnings
 CARGO_TARGET_DIR="$target_dir" cargo test --manifest-path "$manifest" --locked

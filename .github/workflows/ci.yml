@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Test bounded launcher download
+        run: ./scripts/test-launcher
       - name: Install pinned Rust toolchain
         run: rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --component clippy --component rustfmt
       - name: Format
@@ -44,6 +46,8 @@ jobs:
 
           [[ "$LOCALSEND_CONTROLLER_TAG" =~ ^controller-v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [[ "$LOCALSEND_CONTROLLER_ASSET" == "localsend-controller-x86_64-unknown-linux-gnu" ]]
+          [[ "$LOCALSEND_CONTROLLER_SIZE" =~ ^[1-9][0-9]{0,8}$ ]]
+          ((LOCALSEND_CONTROLLER_SIZE <= 33554432))
           [[ "$LOCALSEND_CONTROLLER_SHA256" =~ ^[0-9a-f]{64}$ ]]
           [[ "$LOCALSEND_CONTROLLER_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
 
@@ -56,6 +60,7 @@ jobs:
             --pattern "$LOCALSEND_CONTROLLER_ASSET.sha256"
 
           cd "$release_dir"
+          [[ "$(stat --format='%s' -- "$LOCALSEND_CONTROLLER_ASSET")" == "$LOCALSEND_CONTROLLER_SIZE" ]]
           mapfile -t checksum_lines < "$LOCALSEND_CONTROLLER_ASSET.sha256"
           [[ "${#checksum_lines[@]}" -eq 1 ]]
           [[ "${checksum_lines[0]}" == "$LOCALSEND_CONTROLLER_SHA256  $LOCALSEND_CONTROLLER_ASSET" ]]

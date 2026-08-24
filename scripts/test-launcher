@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck disable=SC1091
+source "$repo_root/controller-release.env"
+
+sandbox="$(mktemp -d)"
+trap 'rm -rf -- "$sandbox"' EXIT
+
+mock_bin="$sandbox/bin"
+cache_dir="$sandbox/cache"
+install -d -- "$mock_bin" "$cache_dir"
+
+cat > "$mock_bin/curl" <<'EOF'
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+limit=""
+while (($# > 0)); do
+  if [[ "$1" == "--max-filesize" ]]; then
+    (($# >= 2)) || exit 64
+    limit="$2"
+    shift 2
+  else
+    shift
+  fi
+done
+
+[[ "$limit" == "${EXPECTED_CONTROLLER_SIZE:?}" ]] || exit 64
+head -c "$((EXPECTED_CONTROLLER_SIZE + 1048576))" /dev/zero
+EOF
+
+cat > "$mock_bin/rm" <<'EOF'
+#!/usr/bin/env bash
+
+# Preserve the partial download so the test can inspect its maximum size.
+exit 0
+EOF
+
+chmod 0700 -- "$mock_bin/curl" "$mock_bin/rm"
+
+set +e
+EXPECTED_CONTROLLER_SIZE="$LOCALSEND_CONTROLLER_SIZE" \
+  LOCALSEND_CONTROLLER_CACHE_DIR="$cache_dir" \
+  PATH="$mock_bin:$PATH" \
+  "$repo_root/bin/localsend-controller" --version \
+  > "$sandbox/stdout" 2> "$sandbox/stderr"
+status=$?
+set -e
+
+[[ "$status" -ne 0 ]]
+[[ "$(< "$sandbox/stderr")" == *"controller download failed or exceeded the reviewed size"* ]]
+[[ ! -e "$cache_dir/$LOCALSEND_CONTROLLER_ASSET" ]]
+
+shopt -s nullglob
+temporary_files=("$cache_dir"/.controller.*)
+shopt -u nullglob
+
+[[ "${#temporary_files[@]}" -eq 1 ]]
+[[ "$(stat --format='%s' -- "${temporary_files[0]}")" == "$LOCALSEND_CONTROLLER_SIZE" ]]

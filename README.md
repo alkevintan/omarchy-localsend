@@ -105,7 +105,7 @@ Cargo output is kept under `$XDG_CACHE_HOME/omarchy-localsend/target` by default
 
 ## Release Verification
 
-No executable is committed to this repository. `bin/localsend-controller` is a readable Bash launcher, and `controller-release.env` pins one release tag, asset name, source commit, and SHA-256 digest. The launcher verifies the digest before every execution and rejects modified or unexpected artifacts.
+No compiled executable is committed to this repository. `bin/localsend-controller` is a readable Bash launcher, and `controller-release.env` pins one release tag, asset name, source commit, and SHA-256 digest. The launcher verifies the digest before every execution and rejects modified or unexpected artifacts.
 
 `.github/workflows/release-controller.yml` builds releases from tagged source using Rust 1.97.1 and actions pinned by full commit SHA. It publishes the checksum and a GitHub artifact provenance attestation. The regular CI workflow independently downloads that exact release, verifies its checksum and attestation against the expected workflow, tag, and source commit, and only then executes it.
 

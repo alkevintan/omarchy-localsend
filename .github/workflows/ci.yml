@@ -9,12 +9,13 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_TARGET_DIR: ${{ runner.temp }}/controller-target
   RUST_TOOLCHAIN: 1.97.1
 
 jobs:
   controller:
     runs-on: ubuntu-24.04
+    env:
+      CARGO_TARGET_DIR: ${{ runner.temp }}/controller-target
     steps:
       - name: Check out source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5

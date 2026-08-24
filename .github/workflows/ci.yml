@@ -21,10 +21,10 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --component clippy --component rustfmt
       - name: Format
-        run: cargo fmt --manifest-path controller/Cargo.toml -- --check
+        run: rustup run "$RUST_TOOLCHAIN" cargo fmt --manifest-path controller/Cargo.toml -- --check
       - name: Lint
-        run: cargo clippy --manifest-path controller/Cargo.toml --all-targets --locked -- -D warnings
+        run: rustup run "$RUST_TOOLCHAIN" cargo clippy --manifest-path controller/Cargo.toml --all-targets --locked -- -D warnings
       - name: Test
-        run: cargo test --manifest-path controller/Cargo.toml --locked
+        run: rustup run "$RUST_TOOLCHAIN" cargo test --manifest-path controller/Cargo.toml --locked
       - name: Build
-        run: cargo build --manifest-path controller/Cargo.toml --locked --release
+        run: rustup run "$RUST_TOOLCHAIN" cargo build --manifest-path controller/Cargo.toml --locked --release

@@ -26,12 +26,14 @@ Quit any running LocalSend GUI first because both receivers use port `53317`, th
 omarchy plugin add https://github.com/cryptobredda/omarchy-localsend --enable --yes
 ```
 
-The plugin appears in the right side of the bar by default. It includes a prebuilt x86-64 Linux controller, so Rust is not required for installation.
+The plugin appears in the right side of the bar by default. On first use, its reviewed launcher downloads the checksum-pinned x86-64 controller from the repository's attested GitHub release. Rust is not required for installation, and the verified controller is reused while offline.
 
 Runtime requirements:
 
 - Omarchy 4.0 or newer, which provides the shell, file picker, and notification helpers
 - x86-64 Linux with glibc 2.39 or newer
+- `curl` for the initial HTTPS artifact download
+- `coreutils` for `sha256sum` verification
 - `util-linux` for `setpriv`
 - `wl-clipboard` for `wl-copy` and `wl-paste`
 - Local network access to TCP and UDP port `53317`
@@ -74,6 +76,7 @@ The receiver uses the alias from an existing LocalSend installation when availab
 
 - Management socket: `$XDG_RUNTIME_DIR/omarchy-localsend.sock`
 - Persistent identity: `$XDG_STATE_HOME/omarchy/localsend-controller/identity.pem`
+- Verified controller cache: `$XDG_CACHE_HOME/omarchy-localsend/controllers/`
 - Incoming files: XDG Downloads directory, normally `~/Downloads`
 
 The socket and identity are created with mode `0600`. Incoming transfers are never accepted automatically.
@@ -86,7 +89,7 @@ Requirements:
 - `qmllint` for QML validation
 - Omarchy for manifest validation and runtime testing
 
-Build and install the controller into `bin/`:
+Build the controller and SHA-256 checksum into `dist/`:
 
 ```bash
 ./scripts/build-controller
@@ -98,11 +101,17 @@ Run all local checks:
 ./scripts/check
 ```
 
-Build output is kept under `$XDG_CACHE_HOME/omarchy-localsend/target` by default, outside the plugin tree. This avoids triggering Omarchy's recursive plugin watcher for every Cargo artifact.
+Cargo output is kept under `$XDG_CACHE_HOME/omarchy-localsend/target` by default, outside the plugin tree. This avoids triggering Omarchy's recursive plugin watcher for every Cargo artifact.
+
+## Release Verification
+
+No executable is committed to this repository. `bin/localsend-controller` is a readable Bash launcher, and `controller-release.env` pins one release tag, asset name, source commit, and SHA-256 digest. The launcher verifies the digest before every execution and rejects modified or unexpected artifacts.
+
+`.github/workflows/release-controller.yml` builds releases from tagged source using Rust 1.97.1 and actions pinned by full commit SHA. It publishes the checksum and a GitHub artifact provenance attestation. The regular CI workflow independently downloads that exact release, verifies its checksum and attestation against the expected workflow, tag, and source commit, and only then executes it.
 
 ## Architecture
 
-`service/Receiver.qml` supervises one foreground controller process for the shell session. `widget/LocalSendBar.qml` is a thin per-monitor view that communicates with the service through short JSON RPC commands.
+`service/Receiver.qml` supervises one foreground controller process for the shell session. The launcher at `bin/localsend-controller` resolves the reviewed release and replaces itself with the verified executable. `widget/LocalSendBar.qml` is a thin per-monitor view that communicates with the service through short JSON RPC commands.
 
 The Rust controller uses LocalSend's official core library at pinned commit `af0416be50770a97760f7070684bc667b759a15c`. It provides discovery, HTTPS transport, transfer decisions, progress, and cancellation without wrapping the interactive LocalSend CLI.
 

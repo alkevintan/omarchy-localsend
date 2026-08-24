@@ -7,7 +7,7 @@ target_dir="${CARGO_TARGET_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/omarchy-localsen
 manifest="$repo_root/controller/Cargo.toml"
 
 cargo fmt --manifest-path "$manifest" -- --check
-CARGO_TARGET_DIR="$target_dir" cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
+CARGO_TARGET_DIR="$target_dir" cargo clippy --manifest-path "$manifest" --all-targets --locked -- -D warnings
 CARGO_TARGET_DIR="$target_dir" cargo test --manifest-path "$manifest" --locked
 CARGO_TARGET_DIR="$target_dir" cargo build --manifest-path "$manifest" --locked --release
 

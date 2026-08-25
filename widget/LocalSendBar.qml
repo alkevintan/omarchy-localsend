@@ -567,6 +567,22 @@ Panel {
             elide: Text.ElideMiddle
             textFormat: Text.PlainText
           }
+
+          PanelSeparator {
+            foreground: root.foreground
+          }
+
+          // Shortcut cheat-sheet so the panel teaches its own keybindings.
+          Text {
+            width: parent.width
+            text: "R refresh · F files · D folder · C clipboard · E receive on/off · H clear history · A accept · X decline · Esc close"
+            color: Qt.darker(root.dim, 1.18)
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            textFormat: Text.PlainText
+          }
         }
       }
     }

@@ -88,7 +88,7 @@ omarchy-shell bredda.localsend clearHistory
 Example global Hyprland binding (in `~/.config/hypr/bindings.lua`) to open the panel:
 
 ```lua
-o.bind("SUPER + ALT + L", "LocalSend panel", "omarchy-shell bredda.localsend toggle")
+o.bind("SUPER + CTRL + J", "LocalSend panel", "omarchy-shell bredda.localsend toggle")
 ```
 
 The receiver uses the alias from an existing LocalSend installation when available. Otherwise, it uses the machine hostname.

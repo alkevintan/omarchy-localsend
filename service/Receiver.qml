@@ -28,6 +28,10 @@ Item {
   // send to it. The choice persists across shell restarts.
   property bool receiverEnabled: true
 
+  // When set, overrides the device name (GUI alias / hostname fallback).
+  // Regenerating picks a fresh random name and restarts the daemon with it.
+  property string customAlias: ""
+
   readonly property bool choosing: chooserProcess.running
   readonly property bool busy: choosing || rpcProcess.running
   readonly property int onlineDeviceCount: {
@@ -102,7 +106,9 @@ Item {
     _intentionalStop = false
     ready = false
     phase = "starting"
-    daemonProcess.command = ["setpriv", "--pdeathsig", "TERM", controllerPath, "daemon"]
+    var command = ["setpriv", "--pdeathsig", "TERM", controllerPath, "daemon"]
+    if (customAlias !== "") command.push("--alias", customAlias)
+    daemonProcess.command = command
     daemonProcess.running = true
   }
 
@@ -332,6 +338,39 @@ Item {
     receiverEnabled = !receiverEnabled
   }
 
+  function generateAlias() {
+    var adjectives = [
+      "Energetic", "Clever", "Gentle", "Happy", "Lively", "Mighty", "Mellow",
+      "Noble", "Quiet", "Rapid", "Sunny", "Brave", "Calm", "Eager", "Fancy",
+      "Jolly", "Lucky", "Plucky", "Slick", "Snappy", "Spicy", "Witty", "Zesty"
+    ]
+    var nouns = [
+      "Potato", "Otter", "Falcon", "Tiger", "Panda", "Comet", "River", "Maple",
+      "Ember", "Pixel", "Rocket", "Badger", "Heron", "Lynx", "Walnut", "Cobalt",
+      "Quokka", "Narwhal", "Puffin", "Teapot", "Cactus", "Meteor", "Breeze", "Fox"
+    ]
+    var current = String(daemon.alias || customAlias || "")
+    var name = current
+    while (name === current) {
+      name = adjectives[Math.floor(Math.random() * adjectives.length)] + " " +
+             nouns[Math.floor(Math.random() * nouns.length)]
+    }
+    return name
+  }
+
+  function regenerateName() {
+    if (!receiverEnabled || controllerPath === "") {
+      lastError = "Enable the receiver to change its name"
+      actionStatusTimer.restart()
+      return
+    }
+    customAlias = generateAlias()
+    savePrefs()
+    actionStatus = "Renaming to " + customAlias
+    actionStatusTimer.restart()
+    restartDaemon()
+  }
+
   function applyReceiverState() {
     if (receiverEnabled) {
       if (controllerPath !== "" && !daemonProcess.running && phase === "paused") startDaemon()
@@ -372,22 +411,28 @@ Item {
 
   function loadPrefs(raw) {
     var enabled = true
+    var alias = ""
     var textValue = String(raw || "").trim()
     if (textValue !== "") {
       try {
         var parsed = JSON.parse(textValue)
         if (parsed && typeof parsed.receiverEnabled === "boolean") enabled = parsed.receiverEnabled
+        if (parsed && typeof parsed.customAlias === "string") alias = parsed.customAlias
       } catch (error) {
         console.warn("localsend: receiver prefs parse failed", error.message || error)
       }
     }
     _prefsLoaded = true
+    customAlias = alias
     if (enabled !== receiverEnabled) receiverEnabled = enabled
   }
 
   function savePrefs() {
     if (!_prefsLoaded) return
-    prefsFile.setText(JSON.stringify({ receiverEnabled: receiverEnabled }, null, 2) + "\n")
+    prefsFile.setText(JSON.stringify({
+      receiverEnabled: receiverEnabled,
+      customAlias: customAlias
+    }, null, 2) + "\n")
   }
 
   onReceiverEnabledChanged: {

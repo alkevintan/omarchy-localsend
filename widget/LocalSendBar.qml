@@ -113,6 +113,7 @@ Panel {
     function enableReceive(): string { if (root.localsend && !root.localsend.receiverEnabled) root.localsend.toggleReceiver(); return "ok" }
     function disableReceive(): string { if (root.localsend && root.localsend.receiverEnabled) root.localsend.toggleReceiver(); return "ok" }
     function clearHistory(): string { if (root.localsend) root.localsend.clearHistory(); return "ok" }
+    function regenerateName(): string { if (root.localsend) root.localsend.regenerateName(); return "ok" }
   }
 
   BarIconButton {
@@ -169,6 +170,7 @@ Panel {
         else if (key === "c") root.localsend.chooseClipboard()
         else if (key === "e") root.localsend.toggleReceiver()
         else if (key === "h") root.localsend.clearHistory()
+        else if (key === "n") root.localsend.regenerateName()
         else if (key === "a" && root.localsend.incoming && !root.localsend.busy) root.localsend.acceptRequest(root.localsend.incoming.id)
         else if (key === "x" && root.localsend.incoming && !root.localsend.busy) root.localsend.declineRequest(root.localsend.incoming.id)
       }
@@ -212,15 +214,42 @@ Panel {
               }
             }
             trailingControl: Component {
-              PanelActionButton {
-                iconText: root.localsend && root.localsend.daemon.refreshing ? "󰑓" : "󰑐"
-                tooltipText: "Refresh nearby devices"
-                foreground: root.foreground
-                fontFamily: root.fontFamily
-                enabled: root.localsend && root.localsend.ready && !root.localsend.busy
-                onClicked: root.localsend.refresh()
+              Row {
+                spacing: Style.space(6)
+
+                PanelActionButton {
+                  iconText: "󰏫"
+                  tooltipText: "Regenerate device name (N)"
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                  enabled: root.localsend && root.localsend.receiverEnabled && !root.localsend.busy
+                  onClicked: root.localsend.regenerateName()
+                }
+
+                PanelActionButton {
+                  iconText: root.localsend && root.localsend.daemon.refreshing ? "󰑓" : "󰑐"
+                  tooltipText: "Refresh nearby devices"
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                  enabled: root.localsend && root.localsend.ready && !root.localsend.busy
+                  onClicked: root.localsend.refresh()
+                }
               }
             }
+          }
+
+          // Shortcut cheat-sheet so the panel teaches its own keybindings.
+          // Sits at the top because the panel content scrolls and a footer
+          // would be below the fold.
+          Text {
+            width: parent.width
+            text: "R refresh · F files · D folder · C clipboard · E receive on/off · N new name · H clear history · A accept · X decline · Esc close"
+            color: Qt.darker(root.dim, 1.18)
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            textFormat: Text.PlainText
           }
 
           Text {
@@ -565,22 +594,6 @@ Panel {
             font.pixelSize: Style.font.caption
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideMiddle
-            textFormat: Text.PlainText
-          }
-
-          PanelSeparator {
-            foreground: root.foreground
-          }
-
-          // Shortcut cheat-sheet so the panel teaches its own keybindings.
-          Text {
-            width: parent.width
-            text: "R refresh · F files · D folder · C clipboard · E receive on/off · H clear history · A accept · X decline · Esc close"
-            color: Qt.darker(root.dim, 1.18)
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap
             textFormat: Text.PlainText
           }
         }

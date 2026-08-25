@@ -19,7 +19,9 @@ Panel {
   readonly property color dim: Qt.darker(foreground, 1.55)
   readonly property color barIconColor: localsend && localsend.incoming
     ? urgent
-    : (localsend && localsend.ready ? barForeground : Qt.darker(barForeground, 1.65))
+    : (localsend && !localsend.receiverEnabled
+        ? Qt.darker(barForeground, 2.2)
+        : (localsend && localsend.ready ? barForeground : Qt.darker(barForeground, 1.65)))
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property bool payloadReady: localsend && localsend.payloadKind !== ""
   readonly property var nearbyDevices: {
@@ -107,6 +109,10 @@ Panel {
     function hide(): void { root.close() }
     function toggle(): void { root.toggle() }
     function refresh(): string { if (root.localsend) root.localsend.refresh(); return "ok" }
+    function toggleReceive(): string { if (root.localsend) root.localsend.toggleReceiver(); return "ok" }
+    function enableReceive(): string { if (root.localsend && !root.localsend.receiverEnabled) root.localsend.toggleReceiver(); return "ok" }
+    function disableReceive(): string { if (root.localsend && root.localsend.receiverEnabled) root.localsend.toggleReceiver(); return "ok" }
+    function clearHistory(): string { if (root.localsend) root.localsend.clearHistory(); return "ok" }
   }
 
   BarIconButton {
@@ -161,6 +167,10 @@ Panel {
         else if (key === "f") root.closeForChooser("files")
         else if (key === "d") root.closeForChooser("folder")
         else if (key === "c") root.localsend.chooseClipboard()
+        else if (key === "e") root.localsend.toggleReceiver()
+        else if (key === "h") root.localsend.clearHistory()
+        else if (key === "a" && root.localsend.incoming && !root.localsend.busy) root.localsend.acceptRequest(root.localsend.incoming.id)
+        else if (key === "x" && root.localsend.incoming && !root.localsend.busy) root.localsend.declineRequest(root.localsend.incoming.id)
       }
 
       Flickable {
@@ -184,9 +194,9 @@ Panel {
             title: root.localsend && root.localsend.daemon.alias
               ? String(root.localsend.daemon.alias)
               : "LocalSend"
-            meta: root.localsend && root.localsend.ready
-              ? "RECEIVER READY"
-              : (root.localsend ? String(root.localsend.phase || "STARTING") : "STARTING")
+            meta: !root.localsend || !root.localsend.receiverEnabled
+              ? "RECEIVER PAUSED"
+              : (root.localsend.ready ? "RECEIVER READY" : String(root.localsend.phase || "STARTING"))
             detail: root.localsend ? root.localsend.onlineDeviceCount + " NEARBY" : "0 NEARBY"
             foreground: root.foreground
             fontFamily: root.fontFamily
@@ -224,6 +234,20 @@ Panel {
             font.pixelSize: Style.font.bodySmall
             wrapMode: Text.WordWrap
             textFormat: Text.PlainText
+          }
+
+          Toggle {
+            visible: root.localsend !== null
+            width: parent.width
+            label: "Receive transfers"
+            description: root.localsend && root.localsend.receiverEnabled
+              ? "Visible to nearby devices on this network"
+              : "Paused — nearby devices cannot discover you"
+            checked: root.localsend ? root.localsend.receiverEnabled : false
+            foreground: root.foreground
+            accent: Color.accent
+            fontFamily: root.fontFamily
+            onClicked: if (root.localsend) root.localsend.toggleReceiver()
           }
 
           Column {
@@ -319,7 +343,7 @@ Panel {
 
                   DecisionButton {
                     width: (parent.width - parent.spacing) / 2
-                    label: "Decline"
+                    label: "Decline (X)"
                     foreground: root.urgent
                     enabled: root.localsend && !root.localsend.busy
                     onClicked: if (root.localsend && root.localsend.incoming) root.localsend.declineRequest(root.localsend.incoming.id)
@@ -327,7 +351,7 @@ Panel {
 
                   DecisionButton {
                     width: (parent.width - parent.spacing) / 2
-                    label: "Accept"
+                    label: "Accept (A)"
                     foreground: root.foreground
                     filled: true
                     enabled: root.localsend && !root.localsend.busy
@@ -494,10 +518,26 @@ Panel {
             width: parent.width
             spacing: Style.space(8)
 
-            PanelSectionHeader {
-              text: "ACTIVITY"
-              foreground: root.foreground
-              fontFamily: root.fontFamily
+            RowLayout {
+              width: parent.width
+              spacing: Style.space(8)
+
+              PanelSectionHeader {
+                Layout.fillWidth: true
+                text: "ACTIVITY"
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+              }
+
+              PanelActionButton {
+                iconText: "󰸨"
+                tooltipText: "Clear activity history (H)"
+                foreground: root.foreground
+                hoverColor: root.urgent
+                fontFamily: root.fontFamily
+                enabled: root.localsend && root.localsend.ready && !root.localsend.hasActiveTransfer && root.visibleTransfers.length > 0
+                onClicked: root.localsend.clearHistory()
+              }
             }
 
             Column {

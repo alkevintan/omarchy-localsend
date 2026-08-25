@@ -23,6 +23,11 @@ Item {
   property var selectedPaths: []
   property string payloadLabel: ""
 
+  // When false the controller daemon is stopped entirely: the device stops
+  // announcing itself on port 53317, so nearby devices cannot discover or
+  // send to it. The choice persists across shell restarts.
+  property bool receiverEnabled: true
+
   readonly property bool choosing: chooserProcess.running
   readonly property bool busy: choosing || rpcProcess.running
   readonly property int onlineDeviceCount: {
@@ -52,6 +57,13 @@ Item {
   property string _chooserOutput: ""
   property string _chooserError: ""
   property var _notifiedRequests: ({})
+  property bool _prefsLoaded: false
+
+  readonly property string stateDir: {
+    var base = Quickshell.env("XDG_STATE_HOME")
+    if (base === undefined || base === null || base === "") base = Quickshell.env("HOME") + "/.local/state"
+    return base + "/omarchy/localsend"
+  }
 
   function concise(text) {
     var value = String(text || "").replace(/\s+/g, " ").trim()
@@ -316,6 +328,73 @@ Item {
     payloadLabel = ""
   }
 
+  function toggleReceiver() {
+    receiverEnabled = !receiverEnabled
+  }
+
+  function applyReceiverState() {
+    if (receiverEnabled) {
+      if (controllerPath !== "" && !daemonProcess.running && phase === "paused") startDaemon()
+      return
+    }
+    _intentionalStop = true
+    launchTimer.stop()
+    restartTimer.stop()
+    startupTimeout.stop()
+    if (rpcProcess.running) rpcProcess.running = false
+    if (chooserProcess.running) chooserProcess.running = false
+    if (daemonProcess.running) daemonProcess.running = false
+    ready = false
+    phase = "paused"
+    daemon = ({})
+    devices = []
+    incoming = null
+    transfers = []
+    _rpcQueue = []
+    _snapshotQueued = false
+  }
+
+  function clearHistory() {
+    if (!ready) return
+    if (hasActiveTransfer) {
+      lastError = "Finish active transfers before clearing history"
+      actionStatusTimer.restart()
+      return
+    }
+    // Transfer history lives in daemon memory only; a controlled restart is
+    // the safest way to drop it without touching completed files on disk.
+    incoming = null
+    transfers = []
+    actionStatus = "Activity history cleared"
+    actionStatusTimer.restart()
+    restartDaemon()
+  }
+
+  function loadPrefs(raw) {
+    var enabled = true
+    var textValue = String(raw || "").trim()
+    if (textValue !== "") {
+      try {
+        var parsed = JSON.parse(textValue)
+        if (parsed && typeof parsed.receiverEnabled === "boolean") enabled = parsed.receiverEnabled
+      } catch (error) {
+        console.warn("localsend: receiver prefs parse failed", error.message || error)
+      }
+    }
+    _prefsLoaded = true
+    if (enabled !== receiverEnabled) receiverEnabled = enabled
+  }
+
+  function savePrefs() {
+    if (!_prefsLoaded) return
+    prefsFile.setText(JSON.stringify({ receiverEnabled: receiverEnabled }, null, 2) + "\n")
+  }
+
+  onReceiverEnabledChanged: {
+    applyReceiverState()
+    savePrefs()
+  }
+
   function sendToDevice(fingerprint) {
     var device = String(fingerprint || "")
     if (device === "" || payloadKind === "") return
@@ -342,6 +421,8 @@ Item {
 
   onControllerPathChanged: if (controllerPath !== "") launchTimer.restart()
 
+  Component.onCompleted: ensureStateDirProc.running = true
+
   Component.onDestruction: {
     _intentionalStop = true
     restartTimer.stop()
@@ -354,7 +435,16 @@ Item {
     id: launchTimer
     interval: 100
     repeat: false
-    onTriggered: root.startDaemon()
+    onTriggered: {
+      // Prefs load asynchronously from disk; wait for them so a persisted
+      // "disabled" choice wins over the enabled default.
+      if (!root._prefsLoaded) {
+        launchTimer.restart()
+        return
+      }
+      if (root.receiverEnabled) root.startDaemon()
+      else root.phase = "paused"
+    }
   }
 
   Timer {
@@ -402,6 +492,22 @@ Item {
     interval: 3000
     repeat: false
     onTriggered: root.actionStatus = ""
+  }
+
+  Process {
+    id: ensureStateDirProc
+    command: ["bash", "-c", "mkdir -p -- \"$1\"", "bash", root.stateDir]
+    running: false
+  }
+
+  FileView {
+    id: prefsFile
+    path: root.stateDir + "/receiver-prefs.json"
+    watchChanges: false
+    atomicWrites: true
+    printErrors: false
+    onLoaded: root.loadPrefs(text())
+    onLoadFailed: root.loadPrefs("")
   }
 
   Process {

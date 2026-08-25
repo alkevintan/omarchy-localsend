@@ -7,6 +7,8 @@ A native Omarchy Shell integration for [LocalSend](https://localsend.org/) that 
 ## Features
 
 - Theme-controlled symbolic status-bar icon
+- Pause or resume receiving entirely (device stops announcing itself on the network)
+- Clear transfer activity history
 - Official colored LocalSend icon inside the panel
 - Nearby-device discovery over LocalSend protocol v2.2
 - File, folder, and clipboard-text sharing
@@ -69,6 +71,25 @@ Keyboard shortcuts while the panel is open:
 | `f` | Choose files |
 | `d` | Choose a folder |
 | `c` | Select clipboard text |
+| `e` | Toggle receiving on/off |
+| `h` | Clear activity history |
+| `a` | Accept the incoming request |
+| `x` | Decline the incoming request |
+
+The receiver can also be toggled without opening the panel via IPC:
+
+```bash
+omarchy-shell bredda.localsend toggleReceive
+omarchy-shell bredda.localsend enableReceive
+omarchy-shell bredda.localsend disableReceive
+omarchy-shell bredda.localsend clearHistory
+```
+
+Example global Hyprland binding (in `~/.config/hypr/bindings.lua`) to open the panel:
+
+```lua
+o.bind("SUPER + ALT + L", "LocalSend panel", "omarchy-shell bredda.localsend toggle")
+```
 
 The receiver uses the alias from an existing LocalSend installation when available. Otherwise, it uses the machine hostname.
 
